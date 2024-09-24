@@ -15,19 +15,22 @@ class _TabUSBScreenState extends State<TabUSBScreen> {
   List<String> _storagePaths = [];
   String _selectedPath = '';
   String _imagePath = '';
+  String _usbPath = '';
   String _soundPath = '';
   String? _currentPath;
 
   final TextEditingController _selectedLogoPathController =
       TextEditingController();
   final TextEditingController _imagePathController = TextEditingController();
+  final TextEditingController _usbPathController = TextEditingController();
   final TextEditingController _soundPathController = TextEditingController();
 
   List<FileSystemEntity> _imageFiles = [];
+  List<FileSystemEntity> _usbFiles = [];
   List<FileSystemEntity> _soundFiles = [];
   List<FileSystemEntity> _logoFiles = [];
 
-  bool _isContentVisible = false; // Control visibility of content
+  bool _isContentVisible = false;
 
   @override
   void initState() {
@@ -39,6 +42,7 @@ class _TabUSBScreenState extends State<TabUSBScreen> {
   Future<void> _listStoragePaths() async {
     final List<String> paths = [];
     final directory = await getApplicationDocumentsDirectory();
+
     paths.add(directory.path);
 
     try {
@@ -62,6 +66,7 @@ class _TabUSBScreenState extends State<TabUSBScreen> {
     final box = await Hive.openBox('settingsBox');
     _selectedLogoPathController.text = box.get('logoPath', defaultValue: '');
     _imagePathController.text = box.get('imagePath', defaultValue: '');
+    _usbPathController.text = box.get('usbPath', defaultValue: '');
     _soundPathController.text = box.get('soundPath', defaultValue: '');
     _loadFiles();
   }
@@ -69,11 +74,13 @@ class _TabUSBScreenState extends State<TabUSBScreen> {
   Future<void> _loadFiles() async {
     setState(() {
       _imageFiles = [];
+      _usbFiles = [];
       _soundFiles = [];
       _logoFiles = [];
     });
 
     await _loadFilesForPath(_imagePathController.text, _imageFiles);
+    await _loadFilesForPath(_usbPathController.text, _usbFiles);
     await _loadFilesForPath(_soundPathController.text, _soundFiles);
     await _loadFilesForPath(_selectedLogoPathController.text, _logoFiles);
   }
@@ -174,6 +181,9 @@ class _TabUSBScreenState extends State<TabUSBScreen> {
                     if (controller == _imagePathController) {
                       _imagePath = _currentPath!;
                       _imagePathController.text = _imagePath;
+                    } else if (controller == _usbPathController) {
+                      _usbPath = _currentPath!;
+                      _usbPathController.text = _usbPath;
                     } else if (controller == _soundPathController) {
                       _soundPath = _currentPath!;
                       _soundPathController.text = _soundPath;
@@ -198,6 +208,7 @@ class _TabUSBScreenState extends State<TabUSBScreen> {
     final box = await Hive.openBox('settingsBox');
     await box.put('logoPath', _selectedLogoPathController.text);
     await box.put('imagePath', _imagePathController.text);
+    await box.put('usbPath', _usbPathController.text);
     await box.put('soundPath', _soundPathController.text);
     _showSnackbar('บันทึกการตั้งค่าเรียบร้อยแล้ว!');
   }
@@ -219,7 +230,7 @@ class _TabUSBScreenState extends State<TabUSBScreen> {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop(); // Close dialog without action
+                Navigator.of(context).pop();
               },
               child: const Text('Cancel'),
             ),
@@ -228,9 +239,9 @@ class _TabUSBScreenState extends State<TabUSBScreen> {
                 if (passwordController.text == '0641318526') {
                   setState(() {
                     _isContentVisible =
-                        true; // Show content if password is correct
+                        true;
                   });
-                  Navigator.of(context).pop(); // Close dialog
+                  Navigator.of(context).pop(); 
                 } else {
                   _showSnackbar('Incorrect password');
                 }
@@ -248,26 +259,38 @@ class _TabUSBScreenState extends State<TabUSBScreen> {
     return Padding(
       padding: const EdgeInsets.all(20.0),
       child: SingleChildScrollView(
-        // Make the content scrollable
         child: Column(
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
-            if (!_isContentVisible) // Show content only if visible
+             if (!_isContentVisible) 
               IconButton(
-                icon: Icon(Icons.lock), // Your icon here
+                icon: Icon(Icons.lock),
                 onPressed:
-                    _checkPassword, // Show password dialog when icon is clicked
+                    _checkPassword,
               ),
             const SizedBox(height: 20),
-            if (_isContentVisible) // Show content only if visible
+             TextField(
+                    readOnly: true,
+                    decoration: const InputDecoration(
+                      labelText: 'Selected USB Path (เลือก USB)',
+                      hintText: 'Tap to select an USB',
+                      border: OutlineInputBorder(),
+                    ),
+                    onTap: () => _showStoragePathsDialog(
+                        controller: _usbPathController),
+                    controller: _usbPathController,
+                  ),
+           
+            const SizedBox(height: 20),
+            if (_isContentVisible) 
               Column(
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
                   TextField(
                     readOnly: true,
-                    decoration: InputDecoration(
+                    decoration: const InputDecoration(
                       labelText:
-                          'Selected Logo Path (เลือกโฟลเดอร์เก้บรูปภาพโลโก้)',
+                          'Selected Logo Path (เลือกโฟลเดอร์เก็บรูปภาพโลโก้)',
                       hintText: 'Tap to select a folder',
                       border: OutlineInputBorder(),
                     ),
@@ -276,12 +299,12 @@ class _TabUSBScreenState extends State<TabUSBScreen> {
                     controller: _selectedLogoPathController,
                   ),
                   const SizedBox(height: 10),
-                  _buildFileList(_logoFiles),
+                  _buildFileList(_logoFiles , _selectedLogoPathController),
                   const SizedBox(height: 20),
                   TextField(
                     readOnly: true,
-                    decoration: InputDecoration(
-                      labelText: 'Image Path (เลือกโฟลเดอร์เก้บรูปภาพสไลด์)',
+                    decoration: const InputDecoration(
+                      labelText: 'Image Path (เลือกโฟลเดอร์เก็บรูปภาพสไลด์)',
                       hintText: 'Tap to select an image',
                       border: OutlineInputBorder(),
                     ),
@@ -290,11 +313,11 @@ class _TabUSBScreenState extends State<TabUSBScreen> {
                     controller: _imagePathController,
                   ),
                   const SizedBox(height: 10),
-                  _buildFileList(_imageFiles),
+                  _buildFileList(_imageFiles , _imagePathController),
                   const SizedBox(height: 20),
                   TextField(
                     readOnly: true,
-                    decoration: InputDecoration(
+                    decoration: const InputDecoration(
                       labelText: 'Sound Path  (เลือกโฟลเดอร์ที่เก็บเสียง)',
                       hintText: 'Tap to select a sound folder',
                       border: OutlineInputBorder(),
@@ -304,22 +327,27 @@ class _TabUSBScreenState extends State<TabUSBScreen> {
                     controller: _soundPathController,
                   ),
                   const SizedBox(height: 10),
-                  _buildFileList(_soundFiles),
+                  _buildFileList(_soundFiles , _soundPathController),
                   const SizedBox(height: 20),
-                  ElevatedButton(
+                ],
+              ),
+               ElevatedButton(
                     onPressed: _saveSettings,
                     child:
                         const Text('Save Settings (บันทึกการตั้งค่าหน้านี้)'),
                   ),
-                ],
-              ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildFileList(List<FileSystemEntity> files) {
+  Widget _buildFileList(List<FileSystemEntity> files, TextEditingController controller) {
+
+    if (controller.text.isEmpty) {
+      return Container();
+    }
+
     return Padding(
       padding: const EdgeInsets.only(top: 10.0),
       child: Container(
@@ -347,7 +375,7 @@ class _TabUSBScreenState extends State<TabUSBScreen> {
                       fit: BoxFit.cover,
                     )
                   else if (file is File && _isSoundFile(file))
-                    Icon(Icons.audiotrack, size: 80),
+                   const Icon(Icons.audiotrack, size: 80),
                   Text(fileName, textAlign: TextAlign.center),
                 ],
               ),

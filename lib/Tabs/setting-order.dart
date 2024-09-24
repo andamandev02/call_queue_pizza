@@ -26,7 +26,7 @@ class _TabOrderScreenState extends State<TabOrderScreen> {
   }
 
   Future<void> _openBox() async {
-    box = await Hive.openBox('orderSettingsBox');
+    box = await Hive.openBox('settingsBox');
     _loadSettings();
   }
 
@@ -99,93 +99,96 @@ class _TabOrderScreenState extends State<TabOrderScreen> {
     return Scaffold(
       body: Padding(
         padding: const EdgeInsets.all(20.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                if (_displayColor != null)
-                  Container(
-                    height: 50,
-                    width: 50,
-                    color: _displayColor,
-                  ),
-                if (_displayColor != null) const SizedBox(width: 16),
-                Expanded(
-                  child: TextField(
-                    controller: _colorController,
-                    decoration: const InputDecoration(
-                      labelText: 'Enter Color Code Text (รหัสสีข้อความ)',
-                      border: OutlineInputBorder(),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  if (_displayColor != null)
+                    Container(
+                      height: 50,
+                      width: 50,
+                      color: _displayColor,
                     ),
-                    onChanged: (value) {
-                      setState(() {
-                        _displayColor = _getColorFromHex(value);
-                      });
-                    },
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                if (_backgroundColor != null)
-                  Container(
-                    height: 50,
-                    width: 50,
-                    color: _backgroundColor,
-                  ),
-                if (_backgroundColor != null) const SizedBox(width: 16),
-                Expanded(
-                  child: TextField(
-                    controller: _backgroundController,
-                    decoration: const InputDecoration(
-                      labelText:
-                          'Enter Color Code Backgrounds (รหัสสีพื้นหลัง)',
-                      border: OutlineInputBorder(),
+                  if (_displayColor != null) const SizedBox(width: 16),
+                  Expanded(
+                    child: TextField(
+                      controller: _colorController,
+                      decoration: const InputDecoration(
+                        labelText: 'Enter Color Code Text (รหัสสีข้อความ)',
+                        border: OutlineInputBorder(),
+                      ),
+                      onChanged: (value) {
+                        setState(() {
+                          _displayColor = _getColorFromHex(value);
+                        });
+                      },
                     ),
-                    onChanged: (value) {
-                      setState(() {
-                        _backgroundColor = _getColorFromHex(value);
-                      });
-                    },
                   ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  if (_backgroundColor != null)
+                    Container(
+                      height: 50,
+                      width: 50,
+                      color: _backgroundColor,
+                    ),
+                  if (_backgroundColor != null) const SizedBox(width: 16),
+                  Expanded(
+                    child: TextField(
+                      controller: _backgroundController,
+                      decoration: const InputDecoration(
+                        labelText:
+                            'Enter Color Code Backgrounds (รหัสสีพื้นหลัง)',
+                        border: OutlineInputBorder(),
+                      ),
+                      onChanged: (value) {
+                        setState(() {
+                          _backgroundColor = _getColorFromHex(value);
+                        });
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _textController,
+                decoration: const InputDecoration(
+                  labelText: 'Enter Text (ข้อความ)',
+                  border: OutlineInputBorder(),
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _textController,
-              decoration: const InputDecoration(
-                labelText: 'Enter Text (ข้อความ)',
-                border: OutlineInputBorder(),
               ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _fontSizeController,
-              decoration: const InputDecoration(
-                labelText: 'Font Size [e.g., 14] (ขนาดข้อความ เริ่มต้นที่ 14)',
-                border: OutlineInputBorder(),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _fontSizeController,
+                decoration: const InputDecoration(
+                  labelText:
+                      'Font Size [e.g., 14] (ขนาดข้อความ เริ่มต้นที่ 14)',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
               ),
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _radiusController,
-              decoration: const InputDecoration(
-                labelText: 'Enter Radius (รัศมี)',
-                border: OutlineInputBorder(),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _radiusController,
+                decoration: const InputDecoration(
+                  labelText: 'Enter Radius (รัศมี)',
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.number,
               ),
-              keyboardType: TextInputType.number,
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _saveSettings,
-              child: const Text('Save Settings (บันทึกการตั้งค่าหน้านี้)'),
-            ),
-          ],
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: _saveSettings,
+                child: const Text('Save Settings (บันทึกการตั้งค่าหน้านี้)'),
+              ),
+            ],
+          ),
         ),
       ),
     );

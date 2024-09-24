@@ -1,7 +1,11 @@
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert';
+import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:dio/dio.dart';
 
 class TabSoundScreen extends StatefulWidget {
   const TabSoundScreen({super.key});
@@ -11,7 +15,6 @@ class TabSoundScreen extends StatefulWidget {
 }
 
 class _TabSoundScreenState extends State<TabSoundScreen> {
-  // Controllers for text input fields
   final TextEditingController textController = TextEditingController();
   final TextEditingController speakerController = TextEditingController();
   final TextEditingController volumeController = TextEditingController();
@@ -20,12 +23,53 @@ class _TabSoundScreenState extends State<TabSoundScreen> {
   final TextEditingController saveFileController = TextEditingController();
   final TextEditingController languageController = TextEditingController();
 
-  Future<void> _saveSettings() async {
+  final Dio _dio = Dio();
+
+  List<String> generatedList = [];
+
+  String? latestAudioUrl;
+  List<Map<String, String>> audioItems = []; 
+
+  void _generateList() async {
+    String inputText = textController.text;
+
+    // Regular expression to match the text format like "เชิญหมายเลข 0-999 ค่ะ"
+    RegExp regExp = RegExp(r"(.*?)(\d+)-(\d+)(.*)");
+    Match? match = regExp.firstMatch(inputText);
+
+    if (match != null) {
+      // Extract the base text, start number, end number, and ending part
+      String baseText = match.group(1)!.trim(); // "เชิญหมายเลข"
+      int start = int.parse(match.group(2)!); // 0
+      int end = int.parse(match.group(3)!); // 999
+      String endText = match.group(4)!.trim(); // "ค่ะ"
+
+      // Generate the list based on the range
+      List<String> tempList = List.generate(
+        end - start + 1,
+        (index) => "$baseText ${start + index} $endText",
+      );
+
+      for (String item in tempList) {
+        await _saveSettings(item); // Use await to wait for each request
+      }
+
+      setState(() {
+        generatedList = tempList;
+      });
+    } else {
+      setState(() {
+        generatedList = [inputText];
+      });
+    }
+  }
+
+  Future<void> _saveSettings(String singleText) async {
     String apiUrl = 'https://api-voice.botnoi.ai/openapi/v1/generate_audio';
     String token = 'SWNMcmZwMXhic1phYzdGV2RVZ0IydmRxT1dDMzU2MTg5NA==';
 
     var body = jsonEncode({
-      'text': textController.text,
+      'text': singleText, // ส่งข้อความทีละรายการ
       'speaker': speakerController.text,
       'volume': double.tryParse(volumeController.text) ?? 1.0,
       'speed': double.tryParse(speedController.text) ?? 1.0,
@@ -47,13 +91,10 @@ class _TabSoundScreenState extends State<TabSoundScreen> {
     if (response.statusCode == 200) {
       var responseData = jsonDecode(response.body);
       String audioUrl = responseData['audio_url'];
-      print('Audio URL: $audioUrl');
 
-      if (await canLaunch(audioUrl)) {
-        await launch(audioUrl);
-      } else {
-        print('Could not launch $audioUrl');
-      }
+      setState(() {
+        audioItems.add({'text': singleText, 'url': audioUrl});
+      });
     } else {
       print('Error: ${response.statusCode}, Response: ${response.body}');
     }
@@ -62,7 +103,7 @@ class _TabSoundScreenState extends State<TabSoundScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Padding(
+      body: SingleChildScrollView( // ใช้ SingleChildScrollView เพื่อให้เลื่อนขึ้นลงได้
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -110,8 +151,7 @@ class _TabSoundScreenState extends State<TabSoundScreen> {
                 ),
               ],
             ),
-            SizedBox(height: 16),
-            // Third row: Save File and Language
+            const SizedBox(height: 16),
             Row(
               children: [
                 Expanded(
@@ -121,7 +161,7 @@ class _TabSoundScreenState extends State<TabSoundScreen> {
                         InputDecoration(labelText: 'Save File (true/false)'),
                   ),
                 ),
-                SizedBox(width: 16),
+                const SizedBox(width: 16),
                 Expanded(
                   child: TextFormField(
                     controller: languageController,
@@ -130,18 +170,60 @@ class _TabSoundScreenState extends State<TabSoundScreen> {
                 ),
               ],
             ),
-            SizedBox(height: 24),
+            const SizedBox(height: 24),
             // Save button
             Center(
               child: ElevatedButton(
-                onPressed: _saveSettings,
-                // onPressed: () {},
-                child: const Text('บันทึกการตั้งค่า'),
+                onPressed: _generateList,
+                child: const Text('Save Settings (บันทึกการตั้งค่าหน้านี้)'),
               ),
+            ),
+            const SizedBox(height: 24),
+            // Button to download all audio files
+            if(audioItems.isNotEmpty)
+            Center(
+              child: ElevatedButton(
+                onPressed: _downloadAll,
+                child: const Text('ดาวน์โหลดเสียงทั้งหมด'),
+              ),
+            ),
+            const SizedBox(height: 24),
+            // Expanded list of audio items
+            ListView.builder(
+              shrinkWrap: true, // ใช้ shrinkWrap เพื่อให้ ListView สามารถปรับขนาดได้ตามเนื้อหา
+              physics: NeverScrollableScrollPhysics(), // ปิดการเลื่อนของ ListView
+              itemCount: audioItems.length,
+              itemBuilder: (context, index) {
+                final item = audioItems[index];
+                return ListTile(
+                  title: Text(item['text']!),
+                  trailing: ElevatedButton(
+                    onPressed: () async {
+                      if (await canLaunch(item['url']!)) {
+                        await launch(item['url']!);
+                      } else {
+                        print('Could not launch ${item['url']}');
+                      }
+                    },
+                    child: const Text('ดาวน์โหลด'),
+                  ),
+                );
+              },
             ),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _downloadAll() async {
+    for (var item in audioItems) {
+      final url = item['url']!;
+      if (await canLaunch(url)) {
+        await launch(url);
+      } else {
+        print('Could not launch $url');
+      }
+    }
   }
 }
