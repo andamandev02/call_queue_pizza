@@ -6,6 +6,7 @@ import 'package:hive/hive.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:path/path.dart' as p;
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -92,8 +93,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
     // /////////////////////////////  usb ////////////////////////
     final usb = box.get('usbPath', defaultValue: '').toString();
-    print(usb);
-
     // /////////////////////////////  usb ////////////////////////
 
 
@@ -130,7 +129,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
 
     // /////////////////////////////  usb ////////////////////////
-      // loadLogoFromUSB(usb);
+      loadLogoFromUSB(usb);
     // /////////////////////////////  usb ////////////////////////
 
 
@@ -138,20 +137,21 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
 
-  Future<void> loadLogoFromUSB(String usb) async {
+ Future<void> loadLogoFromUSB(String usb) async {
     var status = await Permission.storage.status;
     if (!status.isGranted) {
       await _requestExternalStoragePermission();
     }
+
     Directory? externalDir = await getExternalStorageDirectory();
     if (externalDir == null) {
       throw 'External storage directory not found';
     }
-    String usbPath = usb;
-    if (usbPath == null) {
-      throw 'USB path is null';
-    }
+
+    // สร้างที่อยู่ใหม่ไปยังโฟลเดอร์ /logo
+    String usbPath = p.join(usb, 'logo'); // ใช้ path package เพื่อจัดการที่อยู่ไฟล์
     Directory usbDir = Directory(usbPath);
+
     if (!usbDir.existsSync()) {
       showDialog(
         context: context,
@@ -163,7 +163,7 @@ class _HomeScreenState extends State<HomeScreen> {
           return AlertDialog(
             title: Text(
               'USB directory does not exist : $usbPath',
-              style: const TextStyle(fontSize: 50),
+              style: const TextStyle(fontSize: 20),
               textAlign: TextAlign.center,
             ),
           );
@@ -177,10 +177,12 @@ class _HomeScreenState extends State<HomeScreen> {
     if (files.isEmpty) {
       throw 'No files found in USB directory';
     }
+    
     List<File> logoFiles = files.whereType<File>().toList();
     if (logoFiles.isEmpty) {
       throw 'No image files found in USB directory';
     }
+
     setState(() {
       logoList = logoFiles;
     });
