@@ -4,6 +4,8 @@ import 'package:path_provider/path_provider.dart';
 import 'package:external_path/external_path.dart';
 import 'dart:io';
 
+import 'package:permission_handler/permission_handler.dart';
+
 class TabUSBScreen extends StatefulWidget {
   const TabUSBScreen({super.key});
 
@@ -52,9 +54,9 @@ class _TabUSBScreenState extends State<TabUSBScreen> {
       }
     } catch (e) {
       print("Error accessing USB storage: $e");
-      if (!paths.contains(directory.path)) {
-        paths.add(directory.path);
-      }
+      // if (!paths.contains(directory.path)) {
+      //   paths.add(directory.path);
+      // }
     }
 
     setState(() {
@@ -99,6 +101,15 @@ class _TabUSBScreenState extends State<TabUSBScreen> {
   }
 
   Future<void> _navigateToFolder(String path) async {
+    // ขอสิทธิ์การเข้าถึงพื้นที่เก็บข้อมูล
+    var status = await Permission.storage.request();
+    if (!status.isGranted) {
+      setState(() {
+        _showSnackbar('Permission denied for storage');
+      });
+      return; // หยุดการทำงานถ้าไม่ได้รับสิทธิ์
+    }
+
     final directory = Directory(path);
     if (await directory.exists()) {
       try {
@@ -117,9 +128,11 @@ class _TabUSBScreenState extends State<TabUSBScreen> {
           _showSnackbar('ไม่มีโฟลเดอร์ย่อยในไดเร็กทอรีนี้');
         }
       } catch (e) {
+        // จับข้อผิดพลาดเมื่อเข้าถึงโฟลเดอร์
         _showSnackbar('Error accessing directory: $e');
       }
     } else {
+      // แสดงข้อความถ้าโฟลเดอร์ไม่พบ
       _showSnackbar('Directory does not exist.');
     }
   }
@@ -238,10 +251,9 @@ class _TabUSBScreenState extends State<TabUSBScreen> {
               onPressed: () {
                 if (passwordController.text == '0641318526') {
                   setState(() {
-                    _isContentVisible =
-                        true;
+                    _isContentVisible = true;
                   });
-                  Navigator.of(context).pop(); 
+                  Navigator.of(context).pop();
                 } else {
                   _showSnackbar('Incorrect password');
                 }
@@ -262,27 +274,40 @@ class _TabUSBScreenState extends State<TabUSBScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
-             if (!_isContentVisible) 
+            if (!_isContentVisible)
               IconButton(
-                icon: Icon(Icons.lock),
-                onPressed:
-                    _checkPassword,
+                icon: const Icon(Icons.lock),
+                onPressed: _checkPassword,
               ),
             const SizedBox(height: 20),
-             TextField(
-                    readOnly: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Selected USB Path (เลือก USB)',
-                      hintText: 'Tap to select an USB',
-                      border: OutlineInputBorder(),
-                    ),
-                    onTap: () => _showStoragePathsDialog(
-                        controller: _usbPathController),
-                    controller: _usbPathController,
+            InkWell(
+              onTap: () {
+                _showStoragePathsDialog(controller: _usbPathController);
+              },
+              child: IgnorePointer(
+                child: TextField(
+                  readOnly: true,
+                  controller: _usbPathController,
+                  style: const TextStyle(
+                    fontSize: 40.0, // ปรับขนาดตัวอักษรของข้อมูลที่พิมพ์
+                    fontWeight: FontWeight.bold,
                   ),
-           
+                  decoration: const InputDecoration(
+                    labelText: 'Selected USB Path (เลือก USB)',
+                    hintText: 'Tap to select an USB',
+                    border: OutlineInputBorder(),
+                    hintStyle: TextStyle(
+                      fontSize: 40.0, // ปรับขนาดตัวอักษรของ hint
+                      color: Colors.grey, // เปลี่ยนสีของ hint (ถ้าต้องการ)
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            _buildFileList(_usbFiles, _usbPathController),
             const SizedBox(height: 20),
-            if (_isContentVisible) 
+            if (_isContentVisible)
               Column(
                 mainAxisAlignment: MainAxisAlignment.start,
                 children: [
@@ -299,7 +324,7 @@ class _TabUSBScreenState extends State<TabUSBScreen> {
                     controller: _selectedLogoPathController,
                   ),
                   const SizedBox(height: 10),
-                  _buildFileList(_logoFiles , _selectedLogoPathController),
+                  _buildFileList(_logoFiles, _selectedLogoPathController),
                   const SizedBox(height: 20),
                   TextField(
                     readOnly: true,
@@ -313,7 +338,7 @@ class _TabUSBScreenState extends State<TabUSBScreen> {
                     controller: _imagePathController,
                   ),
                   const SizedBox(height: 10),
-                  _buildFileList(_imageFiles , _imagePathController),
+                  _buildFileList(_imageFiles, _imagePathController),
                   const SizedBox(height: 20),
                   TextField(
                     readOnly: true,
@@ -327,23 +352,40 @@ class _TabUSBScreenState extends State<TabUSBScreen> {
                     controller: _soundPathController,
                   ),
                   const SizedBox(height: 10),
-                  _buildFileList(_soundFiles , _soundPathController),
+                  _buildFileList(_soundFiles, _soundPathController),
                   const SizedBox(height: 20),
                 ],
               ),
-               ElevatedButton(
-                    onPressed: _saveSettings,
-                    child:
-                        const Text('Save Settings (บันทึกการตั้งค่าหน้านี้)'),
-                  ),
+            ElevatedButton(
+              onPressed: _saveSettings,
+              style: ElevatedButton.styleFrom(
+                foregroundColor: Colors.white,
+                backgroundColor: Colors.blue, // สีพื้นหลังของปุ่ม
+                padding: const EdgeInsets.symmetric(
+                  vertical: 16.0,
+                  horizontal: 32.0,
+                ), // ขนาดปุ่ม
+                minimumSize:
+                    Size(double.infinity, 60), // ทำให้ปุ่มมีขนาดกว้างเต็มที่
+              ),
+              child: const Text(
+                'Save Settings\n(บันทึกการตั้งค่าหน้านี้)', // \n ทำให้ข้อความไปอยู่บรรทัดถัดไป
+                textAlign: TextAlign.center, // จัดตำแหน่งข้อความให้อยู่กลาง
+                style: TextStyle(
+                  fontSize: 40.0, // ขนาดตัวอักษรของข้อความบนปุ่ม
+                  fontWeight: FontWeight.bold, // น้ำหนักตัวอักษร
+                  inherit: false, // ไม่ให้สืบทอดจาก Theme
+                ),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildFileList(List<FileSystemEntity> files, TextEditingController controller) {
-
+  Widget _buildFileList(
+      List<FileSystemEntity> files, TextEditingController controller) {
     if (controller.text.isEmpty) {
       return Container();
     }
@@ -375,7 +417,11 @@ class _TabUSBScreenState extends State<TabUSBScreen> {
                       fit: BoxFit.cover,
                     )
                   else if (file is File && _isSoundFile(file))
-                   const Icon(Icons.audiotrack, size: 80),
+                    const Icon(Icons.audiotrack, size: 80)
+                  else if (file is File && _isFolder(file))
+                    const Icon(Icons.folder_sharp, size: 80)
+                  else if (file is File && _isAllFile(file))
+                    const Icon(Icons.question_mark, size: 80),
                   Text(fileName, textAlign: TextAlign.center),
                 ],
               ),
@@ -395,7 +441,23 @@ class _TabUSBScreenState extends State<TabUSBScreen> {
 
   bool _isSoundFile(File file) {
     return file.path.endsWith('.mp3') ||
+        file.path.endsWith('.MP3') ||
         file.path.endsWith('.mp4') ||
         file.path.endsWith('.wav');
+  }
+
+  bool _isAllFile(File file) {
+    return !file.path.endsWith('.mp3') ||
+        !file.path.endsWith('.mp4') ||
+        !file.path.endsWith('.wav') ||
+        !file.path.endsWith('.png') ||
+        !file.path.endsWith('.jpg') ||
+        !file.path.endsWith('.JPG') ||
+        !file.path.endsWith('.jpeg');
+  }
+
+  bool _isFolder(File file) {
+    final fileType = FileSystemEntity.typeSync(file.path);
+    return fileType == FileSystemEntityType.directory;
   }
 }
